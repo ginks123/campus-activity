@@ -19,16 +19,9 @@ public class DBUtil {
             Properties props = new Properties();
             props.load(in);
 
-            // 环境变量优先（云端部署用），没有则用 db.properties（本地开发用）
             String envUrl = System.getenv("DB_URL");
             if (envUrl != null && !envUrl.isEmpty()) {
-                // 清除旧版 MySQL SSL 参数，替换为兼容 TiDB Cloud 的配置
-                envUrl = envUrl
-                    .replaceAll("[&?]useSSL=(true|false)", "")
-                    .replaceAll("[&?]requireSSL=(true|false)", "");
-                envUrl += "&sslMode=REQUIRED&allowPublicKeyRetrieval=true&enabledTLSProtocols=TLSv1.2,TLSv1.3";
                 props.setProperty("url", envUrl);
-                // 云端不使用连接池，避免 Druid 初始化问题
                 usePool = false;
             }
             String envUser = System.getenv("DB_USER");
@@ -54,11 +47,9 @@ public class DBUtil {
                 dataSource.setMaxActive(Integer.parseInt(props.getProperty("maxActive", "20")));
                 dataSource.setMaxWait(Integer.parseInt(props.getProperty("maxWait", "3000")));
                 dataSource.init();
-            } else {
-                // Tomcat webapp 类加载器下 DriverManager 找不到驱动，直接用 Driver 实例
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException("DBUtil init failed: " + e.getMessage(), e);
         }
     }
 
@@ -67,16 +58,22 @@ public class DBUtil {
             return dataSource.getConnection();
         }
         try {
-            java.sql.Driver driver = new com.mysql.cj.jdbc.Driver();
-            java.util.Properties info = new java.util.Properties();
+            com.mysql.cj.jdbc.Driver driver = new com.mysql.cj.jdbc.Driver();
+            Properties info = new Properties();
             info.setProperty("user", username);
             info.setProperty("password", password);
-            return driver.connect(url, info);
+            // TiDB Cloud 需要 SSL
+            info.setProperty("sslMode", "REQUIRED");
+            info.setProperty("allowPublicKeyRetrieval", "true");
+            Connection conn = driver.connect(url, info);
+            if (conn == null) {
+                throw new SQLException("Driver.connect returned null, URL not accepted: " + url);
+            }
+            return conn;
         } catch (SQLException e) {
             throw e;
         } catch (Exception e) {
-            throw new SQLException("Failed to create DB connection", e);
+            throw new SQLException("Failed to create connection: " + e.getMessage(), e);
         }
     }
-
 }
