@@ -22,6 +22,9 @@ public class DBUtil {
             String envUrl = System.getenv("DB_URL");
             if (envUrl != null && !envUrl.isEmpty()) {
                 props.setProperty("url", envUrl);
+                // 云端 TiDB 需要 SSL，配置 Druid 连接属性
+                props.setProperty("druid.connectionProperties",
+                    "sslMode=REQUIRED&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai");
             }
             String envUser = System.getenv("DB_USER");
             if (envUser != null && !envUser.isEmpty()) {
