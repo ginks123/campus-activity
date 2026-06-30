@@ -13,7 +13,7 @@
     <div class="login-box">
         <div class="login-header">
             <h2>校园活动报名管理系统</h2>
-            <p>数据库课程设计</p>
+            <p>校园活动一站式管理平台</p>
         </div>
         <div class="login-body">
             <!-- 标签切换 -->
@@ -67,7 +67,6 @@
                 <button type="submit" class="btn btn-primary btn-login">注册</button>
             </form>
 
-            <p class="login-hint">测试账号: admin / admin123 &nbsp;|&nbsp; 张三 / student123</p>
         </div>
     </div>
 </div>
