@@ -21,10 +21,11 @@ public class DBUtil {
             // 环境变量优先（云端部署用），没有则用 db.properties（本地开发用）
             String envUrl = System.getenv("DB_URL");
             if (envUrl != null && !envUrl.isEmpty()) {
-                // 确保 URL 包含 TiDB 需要的 SSL 参数
-                if (!envUrl.contains("sslMode")) {
-                    envUrl += "&sslMode=REQUIRED&allowPublicKeyRetrieval=true";
-                }
+                // 清除旧版 MySQL SSL 参数，替换为兼容 TiDB Cloud 的配置
+                envUrl = envUrl
+                    .replaceAll("[&?]useSSL=(true|false)", "")
+                    .replaceAll("[&?]requireSSL=(true|false)", "");
+                envUrl += "&sslMode=REQUIRED&allowPublicKeyRetrieval=true&enabledTLSProtocols=TLSv1.2,TLSv1.3";
                 props.setProperty("url", envUrl);
             }
             String envUser = System.getenv("DB_USER");
