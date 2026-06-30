@@ -1,16 +1,18 @@
 package com.campus.util;
 
-import com.alibaba.druid.pool.DruidDataSource;
-import com.alibaba.druid.pool.DruidDataSourceFactory;
-
 import java.io.InputStream;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
 public class DBUtil {
 
-    private static DruidDataSource dataSource;
+    private static String url;
+    private static String username;
+    private static String password;
+    private static com.alibaba.druid.pool.DruidDataSource dataSource;
+    private static boolean usePool = true;
 
     static {
         try {
@@ -27,6 +29,8 @@ public class DBUtil {
                     .replaceAll("[&?]requireSSL=(true|false)", "");
                 envUrl += "&sslMode=REQUIRED&allowPublicKeyRetrieval=true&enabledTLSProtocols=TLSv1.2,TLSv1.3";
                 props.setProperty("url", envUrl);
+                // 云端不使用连接池，避免 Druid 初始化问题
+                usePool = false;
             }
             String envUser = System.getenv("DB_USER");
             if (envUser != null && !envUser.isEmpty()) {
@@ -37,14 +41,33 @@ public class DBUtil {
                 props.setProperty("password", envPass);
             }
 
-            dataSource = (DruidDataSource) DruidDataSourceFactory.createDataSource(props);
+            url = props.getProperty("url");
+            username = props.getProperty("username");
+            password = props.getProperty("password");
+
+            if (usePool) {
+                Class.forName(props.getProperty("driverClassName"));
+                dataSource = new com.alibaba.druid.pool.DruidDataSource();
+                dataSource.setUrl(url);
+                dataSource.setUsername(username);
+                dataSource.setPassword(password);
+                dataSource.setInitialSize(Integer.parseInt(props.getProperty("initialSize", "5")));
+                dataSource.setMaxActive(Integer.parseInt(props.getProperty("maxActive", "20")));
+                dataSource.setMaxWait(Integer.parseInt(props.getProperty("maxWait", "3000")));
+                dataSource.init();
+            } else {
+                Class.forName("com.mysql.cj.jdbc.Driver");
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
     public static Connection getConnection() throws SQLException {
-        return dataSource.getConnection();
+        if (usePool) {
+            return dataSource.getConnection();
+        }
+        return DriverManager.getConnection(url, username, password);
     }
 
 }
