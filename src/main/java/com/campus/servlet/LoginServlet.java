@@ -23,7 +23,14 @@ public class LoginServlet extends HttpServlet {
         String username = req.getParameter("username");
         String password = req.getParameter("password");
 
-        User user = userService.login(username, password);
+        User user = null;
+        String dbError = null;
+        try {
+            user = userService.login(username, password);
+        } catch (Exception e) {
+            dbError = e.getClass().getSimpleName() + ": " + e.getMessage();
+            e.printStackTrace();
+        }
         if (user != null) {
             HttpSession session = req.getSession();
             session.setAttribute("user", user);
@@ -33,7 +40,11 @@ public class LoginServlet extends HttpServlet {
                 resp.sendRedirect(req.getContextPath() + "/student/activities");
             }
         } else {
-            req.setAttribute("error", "用户名或密码错误");
+            String msg = "用户名或密码错误";
+            if (dbError != null) {
+                msg += " [DB: " + dbError + "]";
+            }
+            req.setAttribute("error", msg);
             req.setAttribute("username", username);
             req.getRequestDispatcher("/jsp/login.jsp").forward(req, resp);
         }

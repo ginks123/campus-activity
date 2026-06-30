@@ -21,10 +21,11 @@ public class DBUtil {
             // 环境变量优先（云端部署用），没有则用 db.properties（本地开发用）
             String envUrl = System.getenv("DB_URL");
             if (envUrl != null && !envUrl.isEmpty()) {
+                // 确保 URL 包含 TiDB 需要的 SSL 参数
+                if (!envUrl.contains("sslMode")) {
+                    envUrl += "&sslMode=REQUIRED&allowPublicKeyRetrieval=true";
+                }
                 props.setProperty("url", envUrl);
-                // 云端 TiDB 需要 SSL，配置 Druid 连接属性
-                props.setProperty("druid.connectionProperties",
-                    "sslMode=REQUIRED&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai");
             }
             String envUser = System.getenv("DB_USER");
             if (envUser != null && !envUser.isEmpty()) {
