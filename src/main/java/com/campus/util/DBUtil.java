@@ -2,7 +2,6 @@ package com.campus.util;
 
 import java.io.InputStream;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
@@ -56,7 +55,7 @@ public class DBUtil {
                 dataSource.setMaxWait(Integer.parseInt(props.getProperty("maxWait", "3000")));
                 dataSource.init();
             } else {
-                Class.forName("com.mysql.cj.jdbc.Driver");
+                // Tomcat webapp 类加载器下 DriverManager 找不到驱动，直接用 Driver 实例
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -67,7 +66,17 @@ public class DBUtil {
         if (usePool) {
             return dataSource.getConnection();
         }
-        return DriverManager.getConnection(url, username, password);
+        try {
+            java.sql.Driver driver = new com.mysql.cj.jdbc.Driver();
+            java.util.Properties info = new java.util.Properties();
+            info.setProperty("user", username);
+            info.setProperty("password", password);
+            return driver.connect(url, info);
+        } catch (SQLException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new SQLException("Failed to create DB connection", e);
+        }
     }
 
 }
