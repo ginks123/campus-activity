@@ -11,20 +11,27 @@ import java.util.List;
 public class UserDao {
 
     public User login(String username, String password) {
-        String sql = "SELECT * FROM users WHERE username=? AND password=? AND status=1";
+        // 先查用户是否存在
+        String sql1 = "SELECT * FROM users WHERE username=?";
         try (Connection conn = DBUtil.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+             PreparedStatement ps = conn.prepareStatement(sql1)) {
             ps.setString(1, username);
-            ps.setString(2, MD5Util.md5(password));
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rowToUser(rs);
+                if (!rs.next()) {
+                    throw new RuntimeException("用户不存在: " + username);
                 }
+                String dbPwd = rs.getString("password");
+                if (!MD5Util.md5(password).equals(dbPwd)) {
+                    throw new RuntimeException("密码不匹配，输入:" + MD5Util.md5(password) + " 库中:" + dbPwd);
+                }
+                if (rs.getInt("status") != 1) {
+                    throw new RuntimeException("账号被禁用, status=" + rs.getInt("status"));
+                }
+                return rowToUser(rs);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("DB连接失败: " + e.getMessage(), e);
         }
-        return null;
     }
 
     public String register(String username, String password, String contact) {
